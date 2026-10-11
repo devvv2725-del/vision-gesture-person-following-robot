@@ -48,5 +48,91 @@
       <direction>-0.5 0.5 -1</direction>
     </light>
 
+  
+    <!-- Visible person for the following demonstration -->
+    <model name="person">
+      <static>true</static>
+      <pose>2.0 0 0 0 0 0</pose>
+      <link name="body">
+
+        <!-- Torso -->
+        <visual name="torso">
+          <pose>0 0 1.05 0 0 0</pose>
+          <geometry><box><size>0.38 0.24 0.65</size></box></geometry>
+          <material><ambient>0.05 0.25 0.85 1</ambient>
+                    <diffuse>0.05 0.25 0.85 1</diffuse></material>
+        </visual>
+
+        <!-- Head -->
+        <visual name="head">
+          <pose>0 0 1.50 0 0 0</pose>
+          <geometry><sphere><radius>0.15</radius></sphere></geometry>
+          <material><ambient>0.85 0.58 0.36 1</ambient>
+                    <diffuse>0.85 0.58 0.36 1</diffuse></material>
+        </visual>
+
+        <!-- Left and right legs -->
+        <visual name="left_leg">
+          <pose>-0.11 0 0.34 0 0 0</pose>
+          <geometry><box><size>0.14 0.17 0.68</size></box></geometry>
+          <material><ambient>0.12 0.12 0.16 1</ambient>
+                    <diffuse>0.12 0.12 0.16 1</diffuse></material>
+        </visual>
+        <visual name="right_leg">
+          <pose>0.11 0 0.34 0 0 0</pose>
+          <geometry><box><size>0.14 0.17 0.68</size></box></geometry>
+          <material><ambient>0.12 0.12 0.16 1</ambient>
+                    <diffuse>0.12 0.12 0.16 1</diffuse></material>
+        </visual>
+
+        <!-- Arms -->
+        <visual name="left_arm">
+          <pose>-0.29 0 1.06 0 0 0</pose>
+          <geometry><box><size>0.13 0.16 0.54</size></box></geometry>
+          <material><ambient>0.85 0.58 0.36 1</ambient>
+                    <diffuse>0.85 0.58 0.36 1</diffuse></material>
+        </visual>
+        <visual name="right_arm">
+          <pose>0.29 0 1.06 0 0 0</pose>
+          <geometry><box><size>0.13 0.16 0.54</size></box></geometry>
+          <material><ambient>0.85 0.58 0.36 1</ambient>
+                    <diffuse>0.85 0.58 0.36 1</diffuse></material>
+        </visual>
+
+
+        <!-- Collision geometry: torso -->
+        <collision name="torso_collision">
+          <pose>0 0 1.05 0 0 0</pose>
+          <geometry><box><size>0.38 0.24 0.65</size></box></geometry>
+        </collision>
+
+        <!-- Collision geometry: head -->
+        <collision name="head_collision">
+          <pose>0 0 1.50 0 0 0</pose>
+          <geometry><sphere><radius>0.15</radius></sphere></geometry>
+        </collision>
+
+        <!-- Collision geometry: legs -->
+        <collision name="left_leg_collision">
+          <pose>-0.11 0 0.34 0 0 0</pose>
+          <geometry><box><size>0.14 0.17 0.68</size></box></geometry>
+        </collision>
+        <collision name="right_leg_collision">
+          <pose>0.11 0 0.34 0 0 0</pose>
+          <geometry><box><size>0.14 0.17 0.68</size></box></geometry>
+        </collision>
+
+        <!-- Collision geometry: arms -->
+        <collision name="left_arm_collision">
+          <pose>-0.29 0 1.06 0 0 0</pose>
+          <geometry><box><size>0.13 0.16 0.54</size></box></geometry>
+        </collision>
+        <collision name="right_arm_collision">
+          <pose>0.29 0 1.06 0 0 0</pose>
+          <geometry><box><size>0.13 0.16 0.54</size></box></geometry>
+        </collision>
+      </link>
+    </model>
+
   </world>
 </sdf>

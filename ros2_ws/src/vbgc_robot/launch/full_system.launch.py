@@ -128,6 +128,12 @@ def generate_launch_description():
         package="vbgc_robot",
         executable="camera_target_publisher",
         output="screen"
+    )  
+    # Simulated target for Gazebo demonstration
+    simulated_target = Node(
+        package="vbgc_robot",
+        executable="simulated_target",
+        output="screen"
     )
 
     # --------------------------------------------------------
@@ -150,6 +156,7 @@ def generate_launch_description():
         spawn_robot,
         bridge,
         gesture_publisher,
+        simulated_target,
         camera_target_publisher,
         following_controller
     ])

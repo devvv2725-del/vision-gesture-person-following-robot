@@ -15,3 +15,17 @@ log/
 
 vision/gesture_data/
 gesture_model.pkl
+
+# Python generated files
+__pycache__/
+*.py[cod]
+
+# ROS 2 generated workspace
+ros2_ws/build/
+ros2_ws/install/
+ros2_ws/log/
+ros2_ws/.colcon/
+
+# Local backup files
+*.bak
+*.backup
