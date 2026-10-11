@@ -2,320 +2,136 @@ import math
 
 import rclpy
 from rclpy.node import Node
-
 from geometry_msgs.msg import Pose, Twist
 from std_msgs.msg import String
 
 
 class FollowingController(Node):
-
     def __init__(self):
         super().__init__("following_controller")
 
-        # --------------------------------------------------------
-        # Following parameters
-        # --------------------------------------------------------
+        self.desired_distance = 1.2
+        self.distance_tolerance = 0.10
 
-        self.desired_distance = 1.0
-        self.distance_tolerance = 0.15
-
-        self.max_linear_speed = 0.25
-        self.max_angular_speed = 0.8
-
+        self.max_linear_speed = 0.12
+        self.max_angular_speed = 0.6
         self.target_timeout = 0.5
 
-        # --------------------------------------------------------
-        # Target state
-        # --------------------------------------------------------
-
         self.follow_enabled = False
-
         self.target_x = None
         self.target_y = None
         self.last_target_time = None
-
-        # --------------------------------------------------------
-        # /cmd_vel publisher
-        # --------------------------------------------------------
+        self.target_lost_logged = False
 
         self.cmd_vel_publisher = self.create_publisher(
-            Twist,
-            "/cmd_vel",
-            10
+            Twist, "/cmd_vel", 10
         )
-
-        # --------------------------------------------------------
-        # Gesture subscription
-        # --------------------------------------------------------
 
         self.gesture_subscription = self.create_subscription(
-            String,
-            "/gesture_command",
-            self.gesture_callback,
-            10
+            String, "/gesture_command", self.gesture_callback, 10
         )
-
-        # --------------------------------------------------------
-        # Target pose subscription
-        # --------------------------------------------------------
 
         self.target_subscription = self.create_subscription(
-            Pose,
-            "/target_pose",
-            self.target_callback,
-            10
+            Pose, "/target_pose", self.target_callback, 10
         )
 
-        # --------------------------------------------------------
-        # Control loop
-        # --------------------------------------------------------
-
-        self.control_timer = self.create_timer(
-            0.05,
-            self.control_loop
-        )
+        self.control_timer = self.create_timer(0.05, self.control_loop)
 
         self.get_logger().info(
-            "Following controller started."
+            "Following controller started; desired distance 1.2 m."
         )
-
-        self.get_logger().info(
-            "Target input: camera-relative /target_pose"
-        )
-
-        self.get_logger().info(
-            "Waiting for FOLLOW / STOP / DOCK..."
-        )
-
-    # ============================================================
-    # Gesture callback
-    # ============================================================
 
     def gesture_callback(self, msg):
-
         command = msg.data.strip().upper()
 
         if command == "FOLLOW":
-
             self.follow_enabled = True
-
-            self.get_logger().info(
-                "FOLLOW enabled."
-            )
-
-        elif command == "STOP":
-
+            self.get_logger().info("FOLLOW enabled.")
+        elif command in ("STOP", "DOCK"):
             self.follow_enabled = False
-
             self.publish_stop()
-
-            self.get_logger().info(
-                "STOP received. Rover stopped."
-            )
-
-        elif command == "DOCK":
-
-            self.follow_enabled = False
-
-            self.publish_stop()
-
-            self.get_logger().info(
-                "DOCK received. Rover stopped."
-            )
-
-    # ============================================================
-    # Target callback
-    # ============================================================
+            self.get_logger().info(f"{command} received. Rover stopped.")
 
     def target_callback(self, msg):
-
         self.target_x = msg.position.x
         self.target_y = msg.position.y
-
         self.last_target_time = self.get_clock().now()
+        self.target_lost_logged = False
 
-    # ============================================================
-    # Main control loop
-    # ============================================================
+    def publish_stop(self):
+        self.cmd_vel_publisher.publish(Twist())
 
     def control_loop(self):
-
-        # --------------------------------------------------------
-        # FOLLOW is not enabled
-        # --------------------------------------------------------
-
         if not self.follow_enabled:
-
             self.publish_stop()
-
             return
-
-        # --------------------------------------------------------
-        # No target received yet
-        # --------------------------------------------------------
 
         if self.target_x is None or self.target_y is None:
-
             self.publish_stop()
-
             return
-
-        # --------------------------------------------------------
-        # No target timestamp
-        # --------------------------------------------------------
 
         if self.last_target_time is None:
-
             self.publish_stop()
-
             return
-
-        # --------------------------------------------------------
-        # Check target freshness
-        # --------------------------------------------------------
 
         target_age = (
             self.get_clock().now() - self.last_target_time
         ).nanoseconds / 1e9
 
         if target_age > self.target_timeout:
-
             self.publish_stop()
-
-            self.get_logger().warning(
-                "Camera target lost. Rover stopped."
-            )
-
+            if not self.target_lost_logged:
+                self.get_logger().warning(
+                    "Target data stale. Rover stopped."
+                )
+                self.target_lost_logged = True
             return
 
-        # --------------------------------------------------------
-        # Calculate target distance
-        # --------------------------------------------------------
-
-        distance = math.sqrt(
-            self.target_x * self.target_x +
-            self.target_y * self.target_y
-        )
-
-        # --------------------------------------------------------
-        # Calculate target angle
-        # --------------------------------------------------------
-
-        target_angle = math.atan2(
-            self.target_y,
-            self.target_x
-        )
-
-        # --------------------------------------------------------
-        # Calculate distance error
-        # --------------------------------------------------------
-
-        distance_error = (
-            distance - self.desired_distance
-        )
-
-        # --------------------------------------------------------
-        # Create velocity command
-        # --------------------------------------------------------
+        distance = math.hypot(self.target_x, self.target_y)
+        target_angle = math.atan2(self.target_y, self.target_x)
 
         twist = Twist()
 
-        # --------------------------------------------------------
-        # Angular velocity
-        # --------------------------------------------------------
-
-        angular_speed = 1.5 * target_angle
-
-        angular_speed = max(
+        twist.angular.z = max(
             -self.max_angular_speed,
             min(
                 self.max_angular_speed,
-                angular_speed
+                1.2 * target_angle
             )
         )
 
-        twist.angular.z = angular_speed
-
-        # --------------------------------------------------------
-        # Linear velocity
-        # --------------------------------------------------------
-
-        if abs(target_angle) < 0.6:
-
-            if distance_error > self.distance_tolerance:
-
-                linear_speed = 0.5 * distance_error
-
-                linear_speed = max(
-                    0.0,
-                    min(
-                        self.max_linear_speed,
-                        linear_speed
-                    )
-                )
-
-                twist.linear.x = linear_speed
-
-            else:
-
-                twist.linear.x = 0.0
-
+        # Only move forward when the target is ahead and outside
+        # the desired following distance plus tolerance.
+        if (
+            self.target_x > 0.0
+            and distance > self.desired_distance + self.distance_tolerance
+            and abs(target_angle) < 0.6
+        ):
+            distance_error = distance - self.desired_distance
+            twist.linear.x = min(
+                self.max_linear_speed,
+                0.6 * distance_error
+            )
         else:
-
-            # Rotate first when target is far from the
-            # center of the camera.
-
             twist.linear.x = 0.0
-
-        # --------------------------------------------------------
-        # Publish velocity
-        # --------------------------------------------------------
 
         self.cmd_vel_publisher.publish(twist)
 
-    # ============================================================
-    # Stop rover
-    # ============================================================
+    def destroy_node(self):
+        self.publish_stop()
+        super().destroy_node()
 
-    def publish_stop(self):
-
-        stop = Twist()
-
-        stop.linear.x = 0.0
-        stop.linear.y = 0.0
-        stop.linear.z = 0.0
-
-        stop.angular.x = 0.0
-        stop.angular.y = 0.0
-        stop.angular.z = 0.0
-
-        self.cmd_vel_publisher.publish(stop)
-
-
-# ================================================================
-# Main
-# ================================================================
 
 def main(args=None):
-
     rclpy.init(args=args)
-
     node = FollowingController()
 
     try:
-
         rclpy.spin(node)
-
     except KeyboardInterrupt:
-
         pass
-
     finally:
-
-        node.publish_stop()
-
         node.destroy_node()
-
         rclpy.shutdown()
 
 
